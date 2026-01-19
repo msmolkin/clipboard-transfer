@@ -2,6 +2,8 @@
 REM Build script for Windows Clipboard Receiver
 REM Creates a standalone .exe
 
+setlocal
+
 echo Building Clipboard Receiver for Windows...
 
 REM Check if PyInstaller is installed
@@ -11,13 +13,19 @@ if errorlevel 1 (
     pip install pyinstaller
 )
 
+REM Clean previous builds
+echo Cleaning previous builds...
+if exist build rmdir /s /q build
+if exist dist\ClipboardReceiver.exe del /q dist\ClipboardReceiver.exe
+if exist ClipboardReceiver.spec del /q ClipboardReceiver.spec
+
 REM Create build directory
 if not exist dist mkdir dist
 
 REM Build the executable
+echo Building executable...
 pyinstaller --onefile ^
     --name "ClipboardReceiver" ^
-    --icon=assets\icon.ico ^
     --add-data "README.md;." ^
     --hidden-import=paddle ^
     --hidden-import=paddleocr ^
@@ -26,12 +34,11 @@ pyinstaller --onefile ^
     src\cb_receiver.py
 
 echo.
-echo Build complete!
-echo Executable saved to: dist\ClipboardReceiver.exe
+echo ✓ Build complete!
+echo   Executable: dist\ClipboardReceiver.exe
 echo.
-echo IMPORTANT: You must also distribute the following files:
-echo   - server.crt and server.key (SSL certificates)
-echo   - Or instruct users to generate them with scripts\gen_keys.py
+echo IMPORTANT: First-time users must generate SSL certificates:
+echo   python scripts\gen_keys.py
 echo.
-echo To create an installer, use Inno Setup or NSIS.
+echo Upload ClipboardReceiver.exe to GitHub releases
 pause
