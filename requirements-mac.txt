@@ -1,0 +1,6 @@
+# Mac Sender Requirements
+# Python 3.10+ required
+
+Pillow>=12.0.0
+pyperclip>=1.11.0
+cryptography>=42.0.0
