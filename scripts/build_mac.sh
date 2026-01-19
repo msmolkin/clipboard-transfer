@@ -1,6 +1,8 @@
 #!/bin/bash
 # Build script for Mac Clipboard Sender
-# Creates a standalone .app bundle
+# Creates a standalone .app bundle and DMG
+
+set -e  # Exit on error
 
 echo "Building Clipboard Sender for Mac..."
 
@@ -10,21 +12,34 @@ if ! python3 -c "import PyInstaller" 2>/dev/null; then
     pip install pyinstaller
 fi
 
+# Clean previous builds
+echo "Cleaning previous builds..."
+rm -rf build dist *.spec
+
 # Create build directory
 mkdir -p dist
 
 # Build the app
+echo "Building .app bundle..."
 pyinstaller --onefile \
     --windowed \
     --name "ClipboardSender" \
-    --icon=assets/icon.icns \
     --add-data "README.md:." \
     --hidden-import=PIL._tkinter_finder \
     src/cb_sender.py
 
 echo ""
-echo "Build complete!"
-echo "Application saved to: dist/ClipboardSender.app"
+echo "Creating DMG for distribution..."
+hdiutil create \
+    -volname "Clipboard Sender" \
+    -srcfolder dist/ClipboardSender.app \
+    -ov \
+    -format UDZO \
+    dist/ClipboardSender.dmg
+
 echo ""
-echo "To create a DMG for distribution:"
-echo "  hdiutil create -volname ClipboardSender -srcfolder dist/ClipboardSender.app -ov -format UDZO dist/ClipboardSender.dmg"
+echo "✓ Build complete!"
+echo "  App:  dist/ClipboardSender.app"
+echo "  DMG:  dist/ClipboardSender.dmg"
+echo ""
+echo "Upload ClipboardSender.dmg to GitHub releases"
