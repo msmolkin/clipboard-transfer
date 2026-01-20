@@ -40,20 +40,89 @@ except Exception as e:
 # CONFIGURATION
 HOST = '0.0.0.0'
 PORT = 65432
-SAVE_FOLDER = "Received_Screenshots"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SAVE_FOLDER = os.path.join(SCRIPT_DIR, "Received_Screenshots")
 
 # Ensure save folder exists for screenshots and is writable
 if not os.path.exists(SAVE_FOLDER):
     os.makedirs(SAVE_FOLDER)
     os.chmod(SAVE_FOLDER, 0o777)
 
-# SSL Setup (Optional: remove 'context' lines if you want plain text)
-# Ensure 'server.crt' and 'server.key' are in the same folder as this script
+def generate_ssl_certificates():
+    """Generate self-signed SSL certificates if they don't exist."""
+    print("Generating SSL certificates...")
+    try:
+        from cryptography import x509
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import serialization, hashes
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        import datetime
+
+        # Generate Private Key
+        key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+            backend=default_backend()
+        )
+
+        # Generate Self-Signed Certificate
+        subject = issuer = x509.Name([
+            x509.NameAttribute(x509.NameOID.COUNTRY_NAME, u"US"),
+            x509.NameAttribute(x509.NameOID.STATE_OR_PROVINCE_NAME, u"NY"),
+            x509.NameAttribute(x509.NameOID.LOCALITY_NAME, u"New York"),
+            x509.NameAttribute(x509.NameOID.ORGANIZATION_NAME, u"Clipboard Transfer"),
+            x509.NameAttribute(x509.NameOID.COMMON_NAME, u"localhost"),
+        ])
+
+        cert = x509.CertificateBuilder().subject_name(
+            subject
+        ).issuer_name(
+            issuer
+        ).public_key(
+            key.public_key()
+        ).serial_number(
+            x509.random_serial_number()
+        ).not_valid_before(
+            datetime.datetime.utcnow()
+        ).not_valid_after(
+            datetime.datetime.utcnow() + datetime.timedelta(days=3650)
+        ).add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
+            critical=False,
+        ).sign(key, hashes.SHA256(), default_backend())
+
+        # Write server.key
+        with open("server.key", "wb") as f:
+            f.write(key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            ))
+
+        # Write server.crt
+        with open("server.crt", "wb") as f:
+            f.write(cert.public_bytes(serialization.Encoding.PEM))
+
+        print("✓ SSL certificates generated successfully!")
+        return True
+
+    except Exception as e:
+        print(f"ERROR generating SSL certificates: {e}")
+        print("Please install cryptography: pip install cryptography")
+        return False
+
+# SSL Setup - Auto-generate certificates if they don't exist
+if not os.path.exists("server.crt") or not os.path.exists("server.key"):
+    print("SSL certificates not found. Generating new certificates...")
+    if not generate_ssl_certificates():
+        sys.exit(1)
+
 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
 try:
     context.load_cert_chain(certfile="server.crt", keyfile="server.key")
 except FileNotFoundError:
-    print("WARNING: SSL Keys not found! Generate them or script will fail.")
+    print("ERROR: SSL certificate loading failed!")
+    sys.exit(1)
 
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -83,8 +152,8 @@ def start_paddle_server():
     bindsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     bindsocket.bind((HOST, PORT))
     bindsocket.listen(5)
-    print(f"Listening securely at {get_ip_address()}:{PORT} with {"GPU" if USE_GPU else "CPU"} OCR...")
-    print(f"Screenshots will be saved to {SAVE_FOLDER}")
+    print(f"Listening securely at {get_ip_address()}:{PORT} with {'GPU' if USE_GPU else 'CPU'} OCR...")
+    print(f"Screenshots will be saved to {os.path.abspath(SAVE_FOLDER)}")
 
     while True:
         newsocket, fromaddr = bindsocket.accept()
@@ -112,12 +181,20 @@ def start_paddle_server():
                         
                         # A. Save Image to Disk
                         timestamp = int(time.time())
-                        filename = f"{SAVE_FOLDER}/img_{timestamp}.png"
-                        with open(filename, 'wb') as f:
-                            f.write(payload)
-                        print(f" -> Saved to {filename}")
-                        # open folder in explorer with the file selected
-                        os.startfile(filename)
+                        filename = os.path.join(SAVE_FOLDER, f"img_{timestamp}.png")
+                        try:
+                            with open(filename, 'wb') as f:
+                                f.write(payload)
+                            print(f" -> Saved to {filename}")
+                        except OSError as e:
+                            print(f"[File Error] {e} (path: {filename})")
+                            continue
+
+                        # Open Explorer with the file selected (Windows only)
+                        try:
+                            os.system(f'explorer /select,"{os.path.abspath(filename)}"')
+                        except Exception as e:
+                            print(f"[File Error] {e} (path: {filename})")
                             
                         # B. Run PaddleOCR
                         if ocr_engine:
@@ -146,7 +223,13 @@ def start_paddle_server():
                             print(" -> OCR Engine not loaded, skipping.")
 
         except Exception as e:
-            print(f"Connection Error: {e}")
+            # Keep the wording, but if a file path is present, also show the resolved absolute path.
+            if isinstance(e, FileNotFoundError) and getattr(e, "filename", None):
+                missing = e.filename
+                resolved = os.path.abspath(missing)
+                print(f"Connection Error: {e} (path: {resolved})")
+            else:
+                print(f"Connection Error: {e}")
 
 if __name__ == "__main__":
     try:

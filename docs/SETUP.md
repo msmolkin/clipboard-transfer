@@ -16,13 +16,7 @@
    pip install -r requirements-windows.txt
    ```
 
-3. **Generate SSL Certificates**
-   ```bash
-   python scripts/gen_keys.py
-   ```
-   This creates `server.crt` and `server.key` in the project root.
-
-4. **Find Your IP Address**
+3. **Find Your IP Address** (SSL certificates auto-generate on first run)
    ```powershell
    (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias *Wi-Fi*).IPAddress
    ```
@@ -111,9 +105,9 @@ Connected! clipboard syncing is active.
 - Models cached locally after first download
 
 ### SSL Errors
-- Regenerate certificates: `python scripts/gen_keys.py`
-- Ensure `server.crt` and `server.key` are in project root
-- Move them from scripts/ to root if needed
+- Delete `server.crt` and `server.key` and restart receiver
+- Certificates auto-generate on first run
+- Manually generate with `python scripts/gen_keys.py` if needed
 
 ## Network Configuration
 

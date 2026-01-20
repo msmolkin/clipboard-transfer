@@ -24,7 +24,7 @@ if not exist dist mkdir dist
 
 REM Build the executable
 echo Building executable...
-pyinstaller --onefile ^
+python -m PyInstaller --onefile ^
     --name "ClipboardReceiver" ^
     --add-data "README.md;." ^
     --hidden-import=paddle ^
@@ -37,8 +37,6 @@ echo.
 echo ✓ Build complete!
 echo   Executable: dist\ClipboardReceiver.exe
 echo.
-echo IMPORTANT: First-time users must generate SSL certificates:
-echo   python scripts\gen_keys.py
-echo.
+echo SSL certificates will be auto-generated on first run.
 echo Upload ClipboardReceiver.exe to GitHub releases
 pause
