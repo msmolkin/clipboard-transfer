@@ -59,16 +59,7 @@ python -m venv .venv
 pip install -r requirements-windows.txt
 ```
 
-### Step 3: Generate SSL Certificates
-
-**On Windows (run this first):**
-```bash
-python scripts/gen_keys.py
-```
-
-This creates `server.crt` and `server.key` in the project root.
-
-### Step 4: Configure IP Address
+### Step 3: Configure IP Address (SSL certificates auto-generate on first run)
 
 **On Windows**, find your IP address:
 ```powershell
@@ -140,8 +131,9 @@ Now copy anything on your Mac and it will appear on Windows!
 - Check Windows firewall allows port 65432
 
 ### SSL Certificate Errors
-- Regenerate certificates using `python scripts/gen_keys.py`
-- Make sure `server.crt` and `server.key` are in the project root folder
+- Delete existing `server.crt` and `server.key` files and restart the receiver
+- Certificates will be auto-generated on first run
+- Manually generate with `python scripts/gen_keys.py` if needed
 
 ### OCR Not Working
 - PaddleOCR downloads models on first run (this may take time)

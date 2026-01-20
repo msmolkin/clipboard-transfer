@@ -21,7 +21,7 @@ mkdir -p dist
 
 # Build the app
 echo "Building .app bundle..."
-pyinstaller --onefile \
+python3 -m PyInstaller --onefile \
     --windowed \
     --name "ClipboardSender" \
     --add-data "README.md:." \
